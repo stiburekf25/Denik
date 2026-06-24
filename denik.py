@@ -9,8 +9,16 @@ CURSIVE_stav = False
 UNDERLINE_stav = False
 MARKER_stav = False
 FONTCOLOR_stav = False
-
-
+FONTCOLOR_hodnota = "#000000"
+MARKER_hodnota = "#ffff00"
+BARVY = {
+    "Black": "#000000",
+    "White": "#ffffff",
+    "Red": "#ff0000",
+    "Green": "#00aa00",
+    "Blue": "#0000ff",
+    "Yellow": "#ffff00"
+}
 
 FONT_stav = "Calibri"
 FONT_velikost = 14
@@ -27,50 +35,33 @@ def BOLD():
 
     BOLD_stav = not BOLD_stav
 
-    if BOLD_stav:
-        tlacitko.configure(fg_color="#3b82f6")
-    else:
-        tlacitko.configure(fg_color="#1f6aa5")
-
 def CURSIVE():
     global CURSIVE_stav
 
     CURSIVE_stav = not CURSIVE_stav
-
-    if CURSIVE_stav:
-        tlacitko_cursive.configure(fg_color="#3b82f6")
-    else:
-        tlacitko_cursive.configure(fg_color="#1f6aa5")
 
 def UNDERLINE():
     global UNDERLINE_stav
 
     UNDERLINE_stav = not UNDERLINE_stav
 
-    if UNDERLINE_stav:
-        tlacitko_underline.configure(fg_color="#3b82f6")
+def MARKER(vybrana_barva_pozadi):
+    global MARKER_stav, MARKER_hodnota
+
+    if vybrana_barva_pozadi == "None":
+        MARKER_stav = False
+        
     else:
-        tlacitko_underline.configure(fg_color="#1f6aa5")
+        MARKER_hodnota = BARVY[vybrana_barva_pozadi]
+        MARKER_stav = True
+       
+    
 
-def MARKER():
-    global MARKER_stav
+def FONTCOLOR(vybrana_barva):
+    global FONTCOLOR_stav, FONTCOLOR_hodnota
 
-    MARKER_stav = not MARKER_stav
-
-    if MARKER_stav:
-        tlacitko_marker.configure(fg_color="#3b82f6")
-    else:
-        tlacitko_marker.configure(fg_color="#1f6aa5")
-
-def FONTCOLOR():
-    global FONTCOLOR_stav
-
-    FONTCOLOR_stav = not FONTCOLOR_stav
-
-    if FONTCOLOR_stav:
-        tlacitko_fontcolor.configure(fg_color="#3b82f6")
-    else:
-        tlacitko_fontcolor.configure(fg_color="#1f6aa5")
+    FONTCOLOR_hodnota = BARVY[vybrana_barva]
+    FONTCOLOR_stav = vybrana_barva != "Black"
 
 
 def ziskat_tag():
@@ -104,11 +95,13 @@ def ziskat_tag():
 
     nazev_casti.append(FONT_stav.replace(" ", "_"))
     nazev_casti.append(str(FONT_velikost))
+    nazev_casti.append(FONTCOLOR_hodnota.replace("#", ""))
+    nazev_casti.append(MARKER_hodnota.replace("#", ""))
     nazev = "_".join(nazev_casti)
 
 
     if nazev not in textbox._textbox.tag_names():
-        textbox._textbox.tag_configure(nazev, font=font, underline=UNDERLINE_stav, background="#ffff00" if MARKER_stav else "", foreground="#ff0000" if FONTCOLOR_stav else "")
+        textbox._textbox.tag_configure(nazev, font=font, underline=UNDERLINE_stav, background=MARKER_hodnota if MARKER_stav else "", foreground=FONTCOLOR_hodnota if FONTCOLOR_stav else "")
     
     return nazev
 
@@ -126,11 +119,29 @@ def psani_textu(event):
  
     return "break"
 
+def novy_denik():
+    textbox._textbox.delete("1.0", "end")
+    global BOLD_stav, CURSIVE_stav, UNDERLINE_stav, MARKER_stav, FONTCOLOR_stav, FONTCOLOR_hodnota, MARKER_hodnota, FONT_stav, FONT_velikost
+    BOLD_stav = False
+    CURSIVE_stav = False
+    UNDERLINE_stav = False
+    MARKER_stav = False
+    FONTCOLOR_stav = False
+    FONTCOLOR_hodnota = "#000000"
+    MARKER_hodnota = "#ffff00"
+    FONT_stav = "Calibri"
+    FONT_velikost = 14
+
 def otevreni_menu(event=None):
     global menu_otevreno, dropdown_frame
     if not menu_otevreno:
         dropdown_frame = customtkinter.CTkFrame(okno, width=200, height=300, fg_color="#545151")
         dropdown_frame.grid(row=1, column=0, padx=0, pady=0, sticky="nsew")
+        dropdown_frame.columnconfigure(0, weight=5)
+        dropdown_frame.columnconfigure(1, weight=50)
+        dropdown_frame.columnconfigure(2, weight=5)
+        tlacitko_novy_chat = customtkinter.CTkButton(dropdown_frame, text="Nový deník", command=novy_denik, width=200, height=40, bg_color="#545151")
+        tlacitko_novy_chat.grid(row=0, column=1, padx=0, pady=5, sticky="ew")
         textbox.grid(row=1, column=1, columnspan=2, padx=0, pady=0, sticky="nsew")
         menu_otevreno = True
     else:
@@ -138,6 +149,9 @@ def otevreni_menu(event=None):
         textbox.grid(row=1, column=0, columnspan=2, padx=0, pady=0, sticky="nsew")
         menu_otevreno = False
         dropdown_frame = None
+
+
+
 
 okno = customtkinter.CTk()
 okno.geometry("800x600")
@@ -152,6 +166,8 @@ okno.configure(fg_color="#2b2b2b")
 
 menuVelikost = 50
 listaNadMenuVelikost = 2000
+
+
 
 
 
@@ -194,12 +210,14 @@ tlacitko_underline = customtkinter.CTkButton(horni_lista, text="U", command=UNDE
 tlacitko_underline.grid(row=0, column=3, padx=0, pady=10, sticky="n")
 okno.bind("<Control-u>", lambda event: UNDERLINE())
 
-tlacitko_marker = customtkinter.CTkButton(horni_lista, text="M", command=MARKER, width=40, height=40, bg_color="#1c1c1c")
+tlacitko_marker = customtkinter.CTkOptionMenu(horni_lista, values=["None", "Black", "White", "Red", "Green", "Blue", "Yellow"], command=MARKER, width=40, height=40, bg_color="#1c1c1c")
 tlacitko_marker.grid(row=0, column=4, padx=0, pady=10, sticky="n")
+tlacitko_marker.set("None")
 okno.bind("<Control-m>", lambda event: MARKER())
 
-tlacitko_fontcolor = customtkinter.CTkButton(horni_lista, text="A", command=FONTCOLOR, width=40, height=40, bg_color="#1c1c1c")
+tlacitko_fontcolor = customtkinter.CTkOptionMenu(horni_lista, values=["Black", "White", "Red", "Green", "Blue", "Yellow"], command=FONTCOLOR, width=40, height=40, bg_color="#1c1c1c")
 tlacitko_fontcolor.grid(row=0, column=5, padx=0, pady=10, sticky="n")
+tlacitko_fontcolor.set("Black")
 okno.bind("<Control-a>", lambda event: FONTCOLOR())
 
 tlacitko_fontpicker = customtkinter.CTkOptionMenu(
