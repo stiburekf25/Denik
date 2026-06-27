@@ -1,9 +1,12 @@
 import tkinter
 import customtkinter
 from PIL import Image, ImageTk
+from datetime import datetime
+
 
 menu_otevreno = False
 dropdown_frame = None
+
 BOLD_stav = False
 CURSIVE_stav = False
 UNDERLINE_stav = False
@@ -11,6 +14,7 @@ MARKER_stav = False
 FONTCOLOR_stav = False
 FONTCOLOR_hodnota = "#000000"
 MARKER_hodnota = "#ffff00"
+
 BARVY = {
     "Black": "#000000",
     "White": "#ffffff",
@@ -22,6 +26,99 @@ BARVY = {
 
 FONT_stav = "Calibri"
 FONT_velikost = 14
+
+deniky = []
+aktivni_index = None
+tlacitka_deniku = []
+
+def _timestamp():
+    return datetime.now().strftime("%d.%m. %H:%M")
+
+def ulozit_aktivni():
+    if aktivni_index is None:
+        return
+    obsah = textbox._textbox.get("1.0", "end-1c")
+    tagy = []
+    for tag in textbox._textbox.tag_names():
+        if tag in ("sel",):
+            continue
+        for start, end in zip(
+            textbox._textbox.tag_ranges(tag)[0::2],
+            textbox._textbox.tag_ranges(tag)[1::2],
+        ):
+            tagy.append((tag, str(start), str(end)))
+    deniky[aktivni_index]["obsah"] = obsah
+    deniky[aktivni_index]["tagy"] = tagy
+ 
+ 
+def nacist_denik(index):
+    global aktivni_index
+    aktivni_index = index
+ 
+    textbox._textbox.delete("1.0", "end")
+    # Nejdřív vlož text
+    textbox._textbox.insert("1.0", deniky[index]["obsah"])
+    # Pak obnov tagy
+    for tag, start, end in deniky[index]["tagy"]:
+        try:
+            textbox._textbox.tag_add(tag, start, end)
+        except Exception:
+            pass
+ 
+    _zvyraznit_aktivni_tlacitko()
+ 
+ 
+def _zvyraznit_aktivni_tlacitko():
+    for i, btn in enumerate(tlacitka_deniku):
+        if i == aktivni_index:
+            btn.configure(fg_color="#3a7ebf")   # modrá = aktivní
+        else:
+            btn.configure(fg_color="#3d3d3d")   # šedá = neaktivní
+ 
+ 
+def novy_denik():
+    ulozit_aktivni()
+    nazev = f"Deník {_timestamp()}"
+    deniky.append({"nazev": nazev, "obsah": "", "tagy": []})
+    novy_index = len(deniky) - 1
+    _pridat_tlacitko_deniku(novy_index, nazev)
+    nacist_denik(novy_index)
+ 
+ 
+def _pridat_tlacitko_deniku(index, nazev):
+    """Přidá tlačítko pro deník do sidebaru."""
+    if dropdown_frame is None:
+        return
+ 
+    def prepnout(i=index):
+        ulozit_aktivni()
+        nacist_denik(i)
+ 
+    btn = customtkinter.CTkButton(
+        dropdown_frame,
+        text=nazev,
+        command=prepnout,
+        width=180,
+        height=36,
+        fg_color="#3d3d3d",
+        hover_color="#4a4a4a",
+        anchor="w",
+        font=("Calibri", 12),
+    )
+    # tlačítka začínají od řádku 1 (řádek 0 je "Nový deník")
+    btn.grid(row=index + 1, column=1, padx=10, pady=2, sticky="ew")
+    tlacitka_deniku.append(btn)
+ 
+ 
+def _znovu_nakreslit_sidebar():
+    """Po (znovu)otevření sidebaru překreslí všechna existující tlačítka."""
+    for i, d in enumerate(deniky):
+        _pridat_tlacitko_deniku(i, d["nazev"])
+    _zvyraznit_aktivni_tlacitko()
+ 
+
+
+
 def zmen_font(vybrany_font):
     global FONT_stav
     FONT_stav = vybrany_font
@@ -119,21 +216,9 @@ def psani_textu(event):
  
     return "break"
 
-def novy_denik():
-    textbox._textbox.delete("1.0", "end")
-    global BOLD_stav, CURSIVE_stav, UNDERLINE_stav, MARKER_stav, FONTCOLOR_stav, FONTCOLOR_hodnota, MARKER_hodnota, FONT_stav, FONT_velikost
-    BOLD_stav = False
-    CURSIVE_stav = False
-    UNDERLINE_stav = False
-    MARKER_stav = False
-    FONTCOLOR_stav = False
-    FONTCOLOR_hodnota = "#000000"
-    MARKER_hodnota = "#ffff00"
-    FONT_stav = "Calibri"
-    FONT_velikost = 14
-
 def otevreni_menu(event=None):
     global menu_otevreno, dropdown_frame
+    
     if not menu_otevreno:
         dropdown_frame = customtkinter.CTkFrame(okno, width=200, height=300, fg_color="#545151")
         dropdown_frame.grid(row=1, column=0, padx=0, pady=0, sticky="nsew")
