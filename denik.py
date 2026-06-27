@@ -6,6 +6,7 @@ from datetime import datetime
 
 menu_otevreno = False
 dropdown_frame = None
+scroll_frame = None
 
 BOLD_stav = False
 CURSIVE_stav = False
@@ -56,9 +57,7 @@ def nacist_denik(index):
     aktivni_index = index
  
     textbox._textbox.delete("1.0", "end")
-    # Nejdřív vlož text
     textbox._textbox.insert("1.0", deniky[index]["obsah"])
-    # Pak obnov tagy
     for tag, start, end in deniky[index]["tagy"]:
         try:
             textbox._textbox.tag_add(tag, start, end)
@@ -86,32 +85,91 @@ def novy_denik():
  
  
 def _pridat_tlacitko_deniku(index, nazev):
-    """Přidá tlačítko pro deník do sidebaru."""
-    if dropdown_frame is None:
+    if scroll_frame is None:
         return
- 
+
     def prepnout(i=index):
         ulozit_aktivni()
         nacist_denik(i)
- 
+
     btn = customtkinter.CTkButton(
-        dropdown_frame,
+        scroll_frame,
         text=nazev,
         command=prepnout,
         width=180,
         height=36,
         fg_color="#3d3d3d",
-        hover_color="#4a4a4a",
         anchor="w",
         font=("Calibri", 12),
     )
-    # tlačítka začínají od řádku 1 (řádek 0 je "Nový deník")
-    btn.grid(row=index + 1, column=1, padx=10, pady=2, sticky="ew")
-    tlacitka_deniku.append(btn)
- 
+    btn.grid(row=index, column=0, padx=10, pady=(10, 3) if index == 0 else 3, sticky="ew")
+
+    def context_menu(e, i=index):
+        menu = tkinter.Menu(okno, tearoff=0, bg="#3d3d3d", fg="white",
+                            activebackground="#3a7ebf", activeforeground="white",
+                            bd=0, relief="flat")
+
+        def rename(i=i):
+            dialog = customtkinter.CTkToplevel(okno)
+            dialog.title("Přejmenovat")
+            dialog.geometry("300x120")
+            dialog.resizable(False, False)
+            dialog.grab_set()
+            dialog.focus_set()
+            customtkinter.CTkLabel(dialog, text="Nový název deníku:").pack(pady=(16, 4))
+            vstup = customtkinter.CTkEntry(dialog, width=200)
+            vstup.pack()
+            vstup.insert(0, deniky[i]["nazev"])
+            vstup.focus_set()
+            vstup.select_range(0, "end")
+            def potvrdit():
+                novy_nazev = vstup.get()
+                if novy_nazev:
+                    deniky[i]["nazev"] = novy_nazev
+                    btn.configure(text=novy_nazev)
+                dialog.destroy()
+            vstup.bind("<Return>", lambda e: potvrdit())
+            customtkinter.CTkButton(dialog, text="OK", command=potvrdit, width=80).pack(pady=10)
+
+        def delete(i=i):
+            global aktivni_index
+            if len(deniky) <= 1:
+                return
+            deniky.pop(i)
+            otevreni_menu()
+            otevreni_menu()
+            if aktivni_index >= len(deniky):
+                aktivni_index = len(deniky) - 1
+            nacist_denik(aktivni_index)
+
+        def move_up(i=i):
+            if i == 0:
+                return
+            deniky[i], deniky[i-1] = deniky[i-1], deniky[i]
+            otevreni_menu()
+            otevreni_menu()
+            nacist_denik(aktivni_index)
+
+        def move_down(i=i):
+            if i >= len(deniky) - 1:
+                return
+            deniky[i], deniky[i+1] = deniky[i+1], deniky[i]
+            otevreni_menu()
+            otevreni_menu()
+            nacist_denik(aktivni_index)
+
+        menu.add_command(label="Přejmenovat", command=rename)
+        menu.add_separator()
+        menu.add_command(label="⬆️  Posunout nahoru", command=move_up)
+        menu.add_command(label="⬇️  Posunout dolů", command=move_down)
+        menu.add_separator()
+        menu.add_command(label="Smazat", command=delete)
+        menu.tk_popup(e.x_root, e.y_root)
+
+    btn.bind("<Button-3>", context_menu)
+    tlacitka_deniku.append(btn) 
  
 def _znovu_nakreslit_sidebar():
-    """Po (znovu)otevření sidebaru překreslí všechna existující tlačítka."""
     for i, d in enumerate(deniky):
         _pridat_tlacitko_deniku(i, d["nazev"])
     _zvyraznit_aktivni_tlacitko()
@@ -122,25 +180,31 @@ def _znovu_nakreslit_sidebar():
 def zmen_font(vybrany_font):
     global FONT_stav
     FONT_stav = vybrany_font
+    textbox._textbox.focus_set()
+
 
 def zmen_velikost_fontu(vybrana_velikost):
     global FONT_velikost
     FONT_velikost = int(vybrana_velikost)
+    textbox._textbox.focus_set()
+
 
 def BOLD():
     global BOLD_stav
-
     BOLD_stav = not BOLD_stav
+    textbox._textbox.focus_set()
 
 def CURSIVE():
     global CURSIVE_stav
-
     CURSIVE_stav = not CURSIVE_stav
+    textbox._textbox.focus_set()
+
 
 def UNDERLINE():
     global UNDERLINE_stav
-
     UNDERLINE_stav = not UNDERLINE_stav
+    textbox._textbox.focus_set()
+
 
 def MARKER(vybrana_barva_pozadi):
     global MARKER_stav, MARKER_hodnota
@@ -151,7 +215,9 @@ def MARKER(vybrana_barva_pozadi):
     else:
         MARKER_hodnota = BARVY[vybrana_barva_pozadi]
         MARKER_stav = True
-       
+    
+    textbox._textbox.focus_set()
+
     
 
 def FONTCOLOR(vybrana_barva):
@@ -159,6 +225,8 @@ def FONTCOLOR(vybrana_barva):
 
     FONTCOLOR_hodnota = BARVY[vybrana_barva]
     FONTCOLOR_stav = vybrana_barva != "Black"
+
+    textbox._textbox.focus_set()
 
 
 def ziskat_tag():
@@ -217,7 +285,7 @@ def psani_textu(event):
     return "break"
 
 def otevreni_menu(event=None):
-    global menu_otevreno, dropdown_frame
+    global menu_otevreno, dropdown_frame, tlacitka_deniku, scroll_frame
     
     if not menu_otevreno:
         dropdown_frame = customtkinter.CTkFrame(okno, width=200, height=300, fg_color="#545151")
@@ -227,10 +295,19 @@ def otevreni_menu(event=None):
         dropdown_frame.columnconfigure(2, weight=5)
         tlacitko_novy_chat = customtkinter.CTkButton(dropdown_frame, text="Nový deník", command=novy_denik, width=200, height=40, bg_color="#545151")
         tlacitko_novy_chat.grid(row=0, column=1, padx=0, pady=5, sticky="ew")
+        
+        vyska_obrazovky = okno.winfo_height()
+        scroll_frame = customtkinter.CTkScrollableFrame(dropdown_frame, fg_color="#545151", height=vyska_obrazovky - 300, corner_radius=0)
+        scroll_frame.grid(row=1, column=1, padx=0, pady=0, sticky="nsew")
+        scroll_frame.columnconfigure(0, weight=1)
+        
         textbox.grid(row=1, column=1, columnspan=2, padx=0, pady=0, sticky="nsew")
+        tlacitka_deniku = []
+        _znovu_nakreslit_sidebar()
         menu_otevreno = True
     else:
         dropdown_frame.destroy()
+        tlacitka_deniku = []
         textbox.grid(row=1, column=0, columnspan=2, padx=0, pady=0, sticky="nsew")
         menu_otevreno = False
         dropdown_frame = None
@@ -283,15 +360,15 @@ textbox.grid(row=1, column=0, columnspan=2, padx=0, pady=0, sticky="nsew")
 
 textbox._textbox.bind("<KeyPress>", psani_textu)
 
-tlacitko = customtkinter.CTkButton(horni_lista, text="B", command=BOLD, width=40, height=40, bg_color="#1c1c1c")
+tlacitko = customtkinter.CTkButton(horni_lista, text="B", command=BOLD, width=40, height=40, bg_color="#1c1c1c", font=("Segoe UI", 18, "bold"))
 tlacitko.grid(row=0, column=1, padx=0, pady=10, sticky="n")
 okno.bind("<Control-b>", lambda event: BOLD())
 
-tlacitko_cursive = customtkinter.CTkButton(horni_lista, text="I", command=CURSIVE, width=40, height=40, bg_color="#1c1c1c")
+tlacitko_cursive = customtkinter.CTkButton(horni_lista, text="I", command=CURSIVE, width=40, height=40, bg_color="#1c1c1c", font=("Georgia", 18, "italic"))
 tlacitko_cursive.grid(row = 0, column = 2, padx = 0, pady = 10, sticky = "n")
 okno.bind("<Control-i>", lambda event: CURSIVE())
 
-tlacitko_underline = customtkinter.CTkButton(horni_lista, text="U", command=UNDERLINE, width=40, height=40, bg_color="#1c1c1c")
+tlacitko_underline = customtkinter.CTkButton(horni_lista, text="U", command=UNDERLINE, width=40, height=40, bg_color="#1c1c1c", font=("Segoe UI", 18, "underline"))
 tlacitko_underline.grid(row=0, column=3, padx=0, pady=10, sticky="n")
 okno.bind("<Control-u>", lambda event: UNDERLINE())
 
@@ -316,5 +393,7 @@ tlacitko_velikost_fontu = customtkinter.CTkOptionMenu(horni_lista, values=["8","
 tlacitko_velikost_fontu.grid(row=0, column=7, padx=0, pady=10, sticky="n")
 tlacitko_velikost_fontu.set("14")
 
-
+deniky.append({"nazev": f"Deník {_timestamp()}", "obsah": "", "tagy": []})
+aktivni_index = 0
+textbox._textbox.focus_set()
 okno.mainloop()
